@@ -1,16 +1,38 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class FPSCamera : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    [SerializeField] private Camera cam;
+    [SerializeField] private float mouseSensitivity = 100f;
+    [SerializeField] private Transform playerBody;
+
+    private float xRotation = 0f;
+
+    private void Start()
     {
-        
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
-    // Update is called once per frame
-    void Update()
+    private void LateUpdate()
     {
-        
+        cam.transform.position = transform.position;
+
+        Vector2 mouseDelta = Mouse.current.delta.ReadValue();
+
+        float mouseX = mouseDelta.x * mouseSensitivity * Time.deltaTime;
+        float mouseY = mouseDelta.y * mouseSensitivity * Time.deltaTime;
+
+        playerBody.Rotate(Vector3.up * mouseX);
+
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, -60f, 60f);
+
+        cam.transform.rotation = Quaternion.Euler(
+            xRotation,
+            playerBody.eulerAngles.y,
+            0f
+        );
     }
 }
