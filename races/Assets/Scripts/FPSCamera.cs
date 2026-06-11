@@ -7,6 +7,8 @@ public class FPSCamera : MonoBehaviour
     [SerializeField] private float mouseSensitivity = 100f;
     [SerializeField] private Transform playerBody;
 
+    
+
     private float xRotation = 0f;
 
     private void Start()
