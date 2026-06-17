@@ -46,13 +46,16 @@ public class Wepon : MonoBehaviour
             bulletPrefab,
             firePoint.position,
             firePoint.rotation
+            
         );
+        AudioManager.Instance.PlayShoot();
+        
 
         Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
 
         if (bulletRb != null)
         {
-            bulletRb.linearVelocity = firePoint.forward * bulletSpeed;
+            bulletRb.linearVelocity = firePoint.forward * bulletSpeed ;
         }
     }
 }
