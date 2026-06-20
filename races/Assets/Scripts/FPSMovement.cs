@@ -1,8 +1,9 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+
 [RequireComponent(typeof(Rigidbody))]
-public class FPSMovement : MonoBehaviour{
-   
+public class FPSMovement : MonoBehaviour
+{
     [Header("Movement")]
     public float walkSpeed = 5f;
     public float sprintSpeed = 8f;
@@ -16,14 +17,31 @@ public class FPSMovement : MonoBehaviour{
     public float groundCheckDistance = 0.3f;
     public LayerMask groundLayer;
 
-    private Rigidbody rb;
-    private Vector2 moveInput;
-    private bool isGrounded;
+    public Rigidbody Rb { get; private set; }
+    public Vector2 MoveInput { get; private set; }
+    public bool IsGrounded { get; private set; }
+
+    private PlayerBaseState currentState;
+
+    public PlayerIdleState IdleState { get; private set; }
+    public PlayerWalkingState WalkingState { get; private set; }
+    public PlayerRunningState RunningState { get; private set; }
+    public PlayerJumpingState JumpingState { get; private set; }
 
     private void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        rb.freezeRotation = true;
+        Rb = GetComponent<Rigidbody>();
+        Rb.freezeRotation = true;
+
+        IdleState = new PlayerIdleState(this);
+        WalkingState = new PlayerWalkingState(this);
+        RunningState = new PlayerRunningState(this);
+        JumpingState = new PlayerJumpingState(this);
+    }
+
+    private void Start()
+    {
+        SwitchState(IdleState);
     }
 
     private void Update()
@@ -31,32 +49,36 @@ public class FPSMovement : MonoBehaviour{
         ReadInput();
         GroundCheck();
 
-        if (Keyboard.current.spaceKey.wasPressedThisFrame && isGrounded)
-        {
-            Jump();
-        }
+        currentState.UpdateState();
     }
 
     private void FixedUpdate()
     {
-        Move();
+        currentState.FixedUpdateState();
+    }
+
+    public void SwitchState(PlayerBaseState newState)
+    {
+        currentState?.ExitState();
+        currentState = newState;
+        currentState.EnterState();
     }
 
     private void ReadInput()
     {
-        moveInput = Vector2.zero;
+        MoveInput = Vector2.zero;
 
-        if (Keyboard.current.wKey.isPressed) moveInput.y += 1f;
-        if (Keyboard.current.sKey.isPressed) moveInput.y -= 1f;
-        if (Keyboard.current.dKey.isPressed) moveInput.x += 1f;
-        if (Keyboard.current.aKey.isPressed) moveInput.x -= 1f;
+        if (Keyboard.current.wKey.isPressed) MoveInput += Vector2.up;
+        if (Keyboard.current.sKey.isPressed) MoveInput += Vector2.down;
+        if (Keyboard.current.dKey.isPressed) MoveInput += Vector2.right;
+        if (Keyboard.current.aKey.isPressed) MoveInput += Vector2.left;
 
-        moveInput = Vector2.ClampMagnitude(moveInput, 1f);
+        MoveInput = Vector2.ClampMagnitude(MoveInput, 1f);
     }
 
     private void GroundCheck()
     {
-        isGrounded = Physics.Raycast(
+        IsGrounded = Physics.Raycast(
             groundCheckPoint.position,
             Vector3.down,
             groundCheckDistance,
@@ -64,20 +86,32 @@ public class FPSMovement : MonoBehaviour{
         );
     }
 
-    private void Move()
+    public bool HasMovementInput()
     {
-        bool isSprinting = Keyboard.current.leftShiftKey.isPressed;
-        float targetSpeed = isSprinting ? sprintSpeed : walkSpeed;
+        return MoveInput.sqrMagnitude > 0.01f;
+    }
 
+    public bool IsSprintPressed()
+    {
+        return Keyboard.current.leftShiftKey.isPressed;
+    }
+
+    public bool JumpPressed()
+    {
+        return Keyboard.current.spaceKey.wasPressedThisFrame;
+    }
+
+    public void Move(float speed)
+    {
         Vector3 moveDirection =
-            transform.forward * moveInput.y +
-            transform.right * moveInput.x;
+            transform.forward * MoveInput.y +
+            transform.right * MoveInput.x;
 
         moveDirection.Normalize();
 
-        Vector3 targetVelocity = moveDirection * targetSpeed;
+        Vector3 targetVelocity = moveDirection * speed;
 
-        Vector3 currentVelocity = rb.linearVelocity;
+        Vector3 currentVelocity = Rb.linearVelocity;
 
         Vector3 velocityChange = targetVelocity - new Vector3(
             currentVelocity.x,
@@ -85,19 +119,19 @@ public class FPSMovement : MonoBehaviour{
             currentVelocity.z
         );
 
-        rb.AddForce(
+        Rb.AddForce(
             velocityChange * acceleration * Time.fixedDeltaTime,
             ForceMode.VelocityChange
         );
     }
 
-    private void Jump()
+    public void Jump()
     {
-        Vector3 velocity = rb.linearVelocity;
+        Vector3 velocity = Rb.linearVelocity;
         velocity.y = 0f;
-        rb.linearVelocity = velocity;
+        Rb.linearVelocity = velocity;
 
-        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        Rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
     }
 
     private void OnDrawGizmosSelected()
@@ -110,5 +144,4 @@ public class FPSMovement : MonoBehaviour{
             Vector3.down * groundCheckDistance
         );
     }
-
 }

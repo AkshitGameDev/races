@@ -1,7 +1,14 @@
-using UnityEngine;
-
-public abstract class PlayerBaseState 
+public abstract class PlayerBaseState
 {
-    public abstract void EnterState(FPSMovement player);
-    public abstract void UpdateState(FPSMovement player);
+    protected FPSMovement player;
+
+    public PlayerBaseState(FPSMovement player)
+    {
+        this.player = player;
+    }
+
+    public abstract void EnterState();
+    public abstract void UpdateState();
+    public abstract void FixedUpdateState();
+    public abstract void ExitState();
 }
