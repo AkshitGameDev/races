@@ -1,35 +1,99 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class Wepon : MonoBehaviour
 {
-[Header("Shooting")]
+    public enum FireMode
+    {
+        Single,
+        Auto
+    }
+
+    [Header("Shooting")]
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private Transform firePoint;
     [SerializeField] private float bulletSpeed = 40f;
     [SerializeField] private float fireRate = 0.15f;
+    [SerializeField] private FireMode fireMode = FireMode.Auto;
+
+    [Header("Ammo")]
+    [SerializeField] private int magSize = 30;
+    [SerializeField] private int reserveAmmo = 90;
+    [SerializeField] private float reloadTime = 1.5f;
+
+    [Header("Spread")]
+    [SerializeField] private float spread = 0.02f;
+
+    [Header("Recoil")]
+    [SerializeField] private Transform gunVisual;
+    [SerializeField] private float recoilDistance = 0.05f;
+    [SerializeField] private float recoilRecovery = 10f;
+
+    [Header("Effects")]
+    [SerializeField] private ParticleSystem muzzleFlash;
 
     [Header("Weapon Rotation")]
     [SerializeField] private Transform weaponParent;
     [SerializeField] private Camera playerCamera;
     [SerializeField] private float rotationSmoothness = 15f;
 
+    private int currentAmmo;
+    private bool isReloading;
+
     private float nextFireTime;
+
+    private Vector3 defaultLocalPosition;
+
+    private void Start()
+    {
+        currentAmmo = magSize;
+
+        if (gunVisual != null)
+            defaultLocalPosition = gunVisual.localPosition;
+    }
 
     private void Update()
     {
         RotateWeaponWithCamera();
+        RecoverRecoil();
 
-        if (Mouse.current.leftButton.isPressed && Time.time >= nextFireTime)
+        if (Keyboard.current.rKey.wasPressedThisFrame)
         {
-            Shoot();
-            nextFireTime = Time.time + fireRate;
+            StartCoroutine(Reload());
+        }
+
+        if (isReloading)
+            return;
+
+        switch (fireMode)
+        {
+            case FireMode.Auto:
+
+                if (Mouse.current.leftButton.isPressed &&
+                    Time.time >= nextFireTime)
+                {
+                    Shoot();
+                }
+
+                break;
+
+            case FireMode.Single:
+
+                if (Mouse.current.leftButton.wasPressedThisFrame &&
+                    Time.time >= nextFireTime)
+                {
+                    Shoot();
+                }
+
+                break;
         }
     }
 
     private void RotateWeaponWithCamera()
     {
-        if (weaponParent == null || playerCamera == null) return;
+        if (weaponParent == null || playerCamera == null)
+            return;
 
         Quaternion targetRotation = playerCamera.transform.rotation;
 
@@ -42,20 +106,83 @@ public class Wepon : MonoBehaviour
 
     private void Shoot()
     {
+        if (currentAmmo <= 0)
+            return;
+
+        currentAmmo--;
+
+        nextFireTime = Time.time + fireRate;
+
+        Vector3 direction = firePoint.forward;
+
+        direction += firePoint.right * Random.Range(-spread, spread);
+        direction += firePoint.up * Random.Range(-spread, spread);
+
         GameObject bullet = Instantiate(
             bulletPrefab,
             firePoint.position,
-            firePoint.rotation
-            
+            Quaternion.LookRotation(direction)
         );
+
         AudioManager.Instance.PlayShoot();
-        
+
+        if (muzzleFlash != null)
+            muzzleFlash.Play();
 
         Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
 
         if (bulletRb != null)
         {
-            bulletRb.linearVelocity = firePoint.forward * bulletSpeed ;
+            bulletRb.linearVelocity = direction.normalized * bulletSpeed;
         }
+
+        ApplyRecoil();
+
+        Debug.Log($"Ammo: {currentAmmo}/{reserveAmmo}");
     }
+
+    private void ApplyRecoil()
+    {
+        if (gunVisual == null)
+            return;
+
+        gunVisual.localPosition -= Vector3.forward * recoilDistance;
+    }
+
+    private void RecoverRecoil()
+    {
+        if (gunVisual == null)
+            return;
+
+        gunVisual.localPosition = Vector3.Lerp(
+            gunVisual.localPosition,
+            defaultLocalPosition,
+            recoilRecovery * Time.deltaTime
+        );
+    }
+
+    private IEnumerator Reload()
+    {
+        if (currentAmmo == magSize)
+            yield break;
+
+        if (reserveAmmo <= 0)
+            yield break;
+
+        isReloading = true;
+
+        yield return new WaitForSeconds(reloadTime);
+
+        int ammoNeeded = magSize - currentAmmo;
+        int ammoToLoad = Mathf.Min(ammoNeeded, reserveAmmo);
+
+        currentAmmo += ammoToLoad;
+        reserveAmmo -= ammoToLoad;
+
+        isReloading = false;
+    }
+
+    public int CurrentAmmo => currentAmmo;
+    public int ReserveAmmo => reserveAmmo;
+    public bool IsReloading => isReloading;
 }
