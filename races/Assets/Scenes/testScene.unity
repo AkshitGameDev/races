@@ -236,6 +236,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4146092021974884077, guid: aed12c224fbc8704d8eaa07a52e88f44, type: 3}
   m_PrefabInstance: {fileID: 256490607}
   m_PrefabAsset: {fileID: 0}
+--- !u!198 &109614382 stripped
+ParticleSystem:
+  m_CorrespondingSourceObject: {fileID: 4855211828642977510, guid: aed12c224fbc8704d8eaa07a52e88f44, type: 3}
+  m_PrefabInstance: {fileID: 256490607}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &176206061
 GameObject:
   m_ObjectHideFlags: 0
@@ -1407,7 +1412,7 @@ MonoBehaviour:
   gunVisual: {fileID: 367409239}
   recoilDistance: 0.05
   recoilRecovery: 10
-  muzzleFlash: {fileID: 0}
+  muzzleFlash: {fileID: 109614382}
   weaponParent: {fileID: 1462485758}
   playerCamera: {fileID: 330585545}
   rotationSmoothness: 15
