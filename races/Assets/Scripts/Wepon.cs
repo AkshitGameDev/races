@@ -25,11 +25,6 @@ public class Wepon : MonoBehaviour
     [Header("Spread")]
     [SerializeField] private float spread = 0.02f;
 
-    [Header("Recoil")]
-    [SerializeField] private Transform gunVisual;
-    [SerializeField] private float recoilDistance = 0.05f;
-    [SerializeField] private float recoilRecovery = 10f;
-
     [Header("Effects")]
     [SerializeField] private ParticleSystem muzzleFlash;
 
@@ -40,23 +35,25 @@ public class Wepon : MonoBehaviour
 
     private int currentAmmo;
     private bool isReloading;
-
     private float nextFireTime;
+    private bool equipped = false;
 
-    private Vector3 defaultLocalPosition;
+    public void SetEquipped(bool value)
+    {
+        equipped = value;
+    }
 
     private void Start()
     {
         currentAmmo = magSize;
-
-        if (gunVisual != null)
-            defaultLocalPosition = gunVisual.localPosition;
     }
 
     private void Update()
     {
+        if (!equipped)
+            return;
+
         RotateWeaponWithCamera();
-        RecoverRecoil();
 
         if (Keyboard.current.rKey.wasPressedThisFrame)
         {
@@ -69,23 +66,17 @@ public class Wepon : MonoBehaviour
         switch (fireMode)
         {
             case FireMode.Auto:
-
-                if (Mouse.current.leftButton.isPressed &&
-                    Time.time >= nextFireTime)
+                if (Mouse.current.leftButton.isPressed && Time.time >= nextFireTime)
                 {
                     Shoot();
                 }
-
                 break;
 
             case FireMode.Single:
-
-                if (Mouse.current.leftButton.wasPressedThisFrame &&
-                    Time.time >= nextFireTime)
+                if (Mouse.current.leftButton.wasPressedThisFrame && Time.time >= nextFireTime)
                 {
                     Shoot();
                 }
-
                 break;
         }
     }
@@ -110,7 +101,6 @@ public class Wepon : MonoBehaviour
             return;
 
         currentAmmo--;
-
         nextFireTime = Time.time + fireRate;
 
         Vector3 direction = firePoint.forward;
@@ -136,29 +126,7 @@ public class Wepon : MonoBehaviour
             bulletRb.linearVelocity = direction.normalized * bulletSpeed;
         }
 
-        ApplyRecoil();
-
         Debug.Log($"Ammo: {currentAmmo}/{reserveAmmo}");
-    }
-
-    private void ApplyRecoil()
-    {
-        if (gunVisual == null)
-            return;
-
-        gunVisual.localPosition -= Vector3.forward * recoilDistance;
-    }
-
-    private void RecoverRecoil()
-    {
-        if (gunVisual == null)
-            return;
-
-        gunVisual.localPosition = Vector3.Lerp(
-            gunVisual.localPosition,
-            defaultLocalPosition,
-            recoilRecovery * Time.deltaTime
-        );
     }
 
     private IEnumerator Reload()
