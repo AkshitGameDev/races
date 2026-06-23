@@ -4,6 +4,7 @@ using UnityEngine;
 
     public class PlayerPickUPState : PlayerBaseState
     {
+        public PlayerPickUPState(FPSMovement player) : base(player) { }
         public override void EnterState()
         {
             Debug.Log("Entered PlayerPickUPState");
@@ -15,6 +16,10 @@ using UnityEngine;
             
         }
 
+        public override void FixedUpdateState()
+        {
+            
+        }
         public override void ExitState()
         {
             Debug.Log("Exited PlayerPickUPState");
