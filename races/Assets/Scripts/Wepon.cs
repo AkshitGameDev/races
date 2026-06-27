@@ -33,7 +33,17 @@ public class Wepon : MonoBehaviour
 
     private void Update()
     {
-        if (currentGun == null) return;
+        if (currentGun == null)
+        {
+            Debug.Log("No current gun assigned");
+            return;
+        }
+
+        if (currentGun.firePoint == null)
+        {
+            Debug.LogError("FirePoint is missing on current gun");
+            return;
+        }
 
         HandleReloadInput();
         HandleShootInput();
@@ -41,6 +51,12 @@ public class Wepon : MonoBehaviour
 
     private void CreateBulletPool()
     {
+        if (bulletPrefab == null)
+        {
+            Debug.LogError("Bullet Prefab is not assigned");
+            return;
+        }
+
         bulletPool = new GameObject[poolSize];
 
         for (int i = 0; i < poolSize; i++)
@@ -79,7 +95,8 @@ public class Wepon : MonoBehaviour
 
     private void HandleShootInput()
     {
-        if (isReloading) return;
+        if (isReloading)
+            return;
 
         if (currentGun.currentAmmo <= 0)
         {
@@ -108,7 +125,8 @@ public class Wepon : MonoBehaviour
 
     private void TryShoot()
     {
-        if (Time.time < nextFireTime) return;
+        if (Time.time < nextFireTime)
+            return;
 
         Shoot();
         nextFireTime = Time.time + currentGun.fireRate;
@@ -116,7 +134,8 @@ public class Wepon : MonoBehaviour
 
     private void Shoot()
     {
-        if (currentGun.currentAmmo <= 0) return;
+        if (currentGun.currentAmmo <= 0)
+            return;
 
         currentGun.currentAmmo--;
 
@@ -152,8 +171,11 @@ public class Wepon : MonoBehaviour
     {
         Vector3 direction = playerCamera.transform.forward;
 
-        direction += playerCamera.transform.right * Random.Range(-currentGun.spread, currentGun.spread);
-        direction += playerCamera.transform.up * Random.Range(-currentGun.spread, currentGun.spread);
+        direction += playerCamera.transform.right *
+                     Random.Range(-currentGun.spread, currentGun.spread);
+
+        direction += playerCamera.transform.up *
+                     Random.Range(-currentGun.spread, currentGun.spread);
 
         return direction.normalized;
     }
@@ -178,17 +200,28 @@ public class Wepon : MonoBehaviour
 
     private void StartReload()
     {
-        if (isReloading) return;
-        if (currentGun.currentAmmo == currentGun.magazineSize) return;
-        if (currentGun.reserveAmmo <= 0) return;
+        if (isReloading)
+            return;
+
+        if (currentGun.currentAmmo == currentGun.magazineSize)
+            return;
+
+        if (currentGun.reserveAmmo <= 0)
+            return;
 
         StartCoroutine(Reload());
     }
+
     public void SetCurrentGun(Gun gun)
     {
-    currentGun = gun;
-    isReloading = false;    
-    isBursting = false;
+        currentGun = gun;
+        isReloading = false;
+        isBursting = false;
+
+        Debug.Log(
+            "Current gun set to: " +
+            (currentGun != null ? currentGun.name : "NULL")
+        );
     }
 
     private IEnumerator Reload()
@@ -212,12 +245,16 @@ public class Wepon : MonoBehaviour
     {
         int index = currentGun.muzzleFlashIndex;
 
-        if (muzzleFlashes == null) return;
-        if (index < 0 || index >= muzzleFlashes.Length) return;
-        if (muzzleFlashes[index] == null) return;
+        if (muzzleFlashes == null)
+            return;
 
+        if (index < 0 || index >= muzzleFlashes.Length)
+            return;
+
+        if (muzzleFlashes[index] == null)
+            return;
+        muzzleFlashes[index].transform.position = currentGun.firePoint.position;
+        muzzleFlashes[index].transform.rotation = currentGun.firePoint.rotation;
         muzzleFlashes[index].Play();
     }
-
-
 }
