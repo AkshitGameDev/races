@@ -4,153 +4,220 @@ using UnityEngine.InputSystem;
 
 public class Wepon : MonoBehaviour
 {
-    public enum FireMode
-    {
-        Single,
-        Auto
-    }
-
-    [Header("Shooting")]
-    [SerializeField] private GameObject bulletPrefab;
-    [SerializeField] private Transform firePoint;
-    [SerializeField] private float bulletSpeed = 40f;
-    [SerializeField] private float fireRate = 0.15f;
-    [SerializeField] private FireMode fireMode = FireMode.Auto;
-
-    [Header("Ammo")]
-    [SerializeField] private int magSize = 30;
-    [SerializeField] private int reserveAmmo = 90;
-    [SerializeField] private float reloadTime = 1.5f;
-
-    [Header("Spread")]
-    [SerializeField] private float spread = 0.02f;
-
-    [Header("Effects")]
-    [SerializeField] private ParticleSystem muzzleFlash;
-
-    [Header("Weapon Rotation")]
-    [SerializeField] private Transform weaponParent;
+    [Header("References")]
     [SerializeField] private Camera playerCamera;
-    [SerializeField] private float rotationSmoothness = 15f;
+    [SerializeField] private GameObject bulletPrefab;
+    [SerializeField] private Gun currentGun;
 
-    private int currentAmmo;
-    private bool isReloading;
+    [Header("Bullet Pool")]
+    [SerializeField] private int poolSize = 60;
+    [SerializeField] private Transform bulletPoolParent;
+
+    [Header("Muzzle Effects")]
+    [SerializeField] private ParticleSystem[] muzzleFlashes;
+
+    private GameObject[] bulletPool;
+    private int bulletIndex;
+
     private float nextFireTime;
-    private bool equipped = false;
-
-    public void SetEquipped(bool value)
-    {
-        equipped = value;
-    }
+    private bool isReloading;
+    private bool isBursting;
 
     private void Start()
     {
-        currentAmmo = magSize;
+        CreateBulletPool();
+
+        if (currentGun == null)
+            currentGun = GetComponentInChildren<Gun>();
     }
 
     private void Update()
     {
-        if (!equipped)
-            return;
+        if (currentGun == null) return;
 
-        RotateWeaponWithCamera();
+        HandleReloadInput();
+        HandleShootInput();
+    }
 
+    private void CreateBulletPool()
+    {
+        bulletPool = new GameObject[poolSize];
+
+        for (int i = 0; i < poolSize; i++)
+        {
+            GameObject bullet = Instantiate(
+                bulletPrefab,
+                Vector3.zero,
+                Quaternion.identity,
+                bulletPoolParent
+            );
+
+            bullet.SetActive(false);
+            bulletPool[i] = bullet;
+        }
+    }
+
+    private GameObject GetBulletFromPool()
+    {
+        GameObject bullet = bulletPool[bulletIndex];
+
+        bulletIndex++;
+
+        if (bulletIndex >= bulletPool.Length)
+            bulletIndex = 0;
+
+        return bullet;
+    }
+
+    private void HandleReloadInput()
+    {
         if (Keyboard.current.rKey.wasPressedThisFrame)
         {
-            StartCoroutine(Reload());
+            StartReload();
+        }
+    }
+
+    private void HandleShootInput()
+    {
+        if (isReloading) return;
+
+        if (currentGun.currentAmmo <= 0)
+        {
+            StartReload();
+            return;
         }
 
-        if (isReloading)
-            return;
-
-        switch (fireMode)
+        switch (currentGun.fireMode)
         {
-            case FireMode.Auto:
-                if (Mouse.current.leftButton.isPressed && Time.time >= nextFireTime)
-                {
-                    Shoot();
-                }
+            case GunFireMode.Single:
+                if (Mouse.current.leftButton.wasPressedThisFrame)
+                    TryShoot();
                 break;
 
-            case FireMode.Single:
-                if (Mouse.current.leftButton.wasPressedThisFrame && Time.time >= nextFireTime)
-                {
-                    Shoot();
-                }
+            case GunFireMode.Auto:
+                if (Mouse.current.leftButton.isPressed)
+                    TryShoot();
+                break;
+
+            case GunFireMode.Burst:
+                if (Mouse.current.leftButton.wasPressedThisFrame && !isBursting)
+                    StartCoroutine(BurstFire());
                 break;
         }
     }
 
-    private void RotateWeaponWithCamera()
+    private void TryShoot()
     {
-        if (weaponParent == null || playerCamera == null)
-            return;
+        if (Time.time < nextFireTime) return;
 
-        Quaternion targetRotation = playerCamera.transform.rotation;
-
-        weaponParent.rotation = Quaternion.Slerp(
-            weaponParent.rotation,
-            targetRotation,
-            rotationSmoothness * Time.deltaTime
-        );
+        Shoot();
+        nextFireTime = Time.time + currentGun.fireRate;
     }
 
     private void Shoot()
     {
-        if (currentAmmo <= 0)
-            return;
+        if (currentGun.currentAmmo <= 0) return;
 
-        currentAmmo--;
-        nextFireTime = Time.time + fireRate;
+        currentGun.currentAmmo--;
 
-        Vector3 direction = firePoint.forward;
+        Vector3 shootDirection = GetShootDirection();
 
-        direction += firePoint.right * Random.Range(-spread, spread);
-        direction += firePoint.up * Random.Range(-spread, spread);
+        GameObject bullet = GetBulletFromPool();
 
-        GameObject bullet = Instantiate(
-            bulletPrefab,
-            firePoint.position,
-            Quaternion.LookRotation(direction)
+        bullet.transform.SetPositionAndRotation(
+            currentGun.firePoint.position,
+            Quaternion.LookRotation(shootDirection)
         );
 
-        AudioManager.Instance.PlayShoot();
-
-        if (muzzleFlash != null)
-            muzzleFlash.Play();
+        bullet.SetActive(true);
 
         Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
 
         if (bulletRb != null)
         {
-            bulletRb.linearVelocity = direction.normalized * bulletSpeed;
+            bulletRb.linearVelocity = Vector3.zero;
+            bulletRb.angularVelocity = Vector3.zero;
+            bulletRb.linearVelocity = shootDirection * currentGun.bulletSpeed;
         }
 
-        Debug.Log($"Ammo: {currentAmmo}/{reserveAmmo}");
+        PlayMuzzleFlash();
+
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayShoot();
+
+        Debug.Log($"Ammo: {currentGun.currentAmmo}/{currentGun.reserveAmmo}");
+    }
+
+    private Vector3 GetShootDirection()
+    {
+        Vector3 direction = playerCamera.transform.forward;
+
+        direction += playerCamera.transform.right * Random.Range(-currentGun.spread, currentGun.spread);
+        direction += playerCamera.transform.up * Random.Range(-currentGun.spread, currentGun.spread);
+
+        return direction.normalized;
+    }
+
+    private IEnumerator BurstFire()
+    {
+        isBursting = true;
+
+        for (int i = 0; i < currentGun.bulletsPerBurst; i++)
+        {
+            if (currentGun.currentAmmo <= 0)
+                break;
+
+            Shoot();
+
+            yield return new WaitForSeconds(currentGun.burstDelay);
+        }
+
+        nextFireTime = Time.time + currentGun.fireRate;
+        isBursting = false;
+    }
+
+    private void StartReload()
+    {
+        if (isReloading) return;
+        if (currentGun.currentAmmo == currentGun.magazineSize) return;
+        if (currentGun.reserveAmmo <= 0) return;
+
+        StartCoroutine(Reload());
+    }
+    public void SetCurrentGun(Gun gun)
+    {
+    currentGun = gun;
+    isReloading = false;    
+    isBursting = false;
     }
 
     private IEnumerator Reload()
     {
-        if (currentAmmo == magSize)
-            yield break;
-
-        if (reserveAmmo <= 0)
-            yield break;
-
         isReloading = true;
 
-        yield return new WaitForSeconds(reloadTime);
+        yield return new WaitForSeconds(currentGun.reloadTime);
 
-        int ammoNeeded = magSize - currentAmmo;
-        int ammoToLoad = Mathf.Min(ammoNeeded, reserveAmmo);
+        int ammoNeeded = currentGun.magazineSize - currentGun.currentAmmo;
+        int ammoToLoad = Mathf.Min(ammoNeeded, currentGun.reserveAmmo);
 
-        currentAmmo += ammoToLoad;
-        reserveAmmo -= ammoToLoad;
+        currentGun.currentAmmo += ammoToLoad;
+        currentGun.reserveAmmo -= ammoToLoad;
 
         isReloading = false;
+
+        Debug.Log($"Reloaded: {currentGun.currentAmmo}/{currentGun.reserveAmmo}");
     }
 
-    public int CurrentAmmo => currentAmmo;
-    public int ReserveAmmo => reserveAmmo;
-    public bool IsReloading => isReloading;
+    private void PlayMuzzleFlash()
+    {
+        int index = currentGun.muzzleFlashIndex;
+
+        if (muzzleFlashes == null) return;
+        if (index < 0 || index >= muzzleFlashes.Length) return;
+        if (muzzleFlashes[index] == null) return;
+
+        muzzleFlashes[index].Play();
+    }
+
+
 }

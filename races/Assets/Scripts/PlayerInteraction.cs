@@ -9,13 +9,15 @@ public class PlayerInteraction : MonoBehaviour
     [SerializeField] private LayerMask interactableLayer;
     [SerializeField] private float interactDistance = 3f;
 
+    [Header("Weapon Controller")]
+    [SerializeField] private Wepon weponController;
+
     private GameObject heldObject;
 
     private void Update()
     {
         if (Keyboard.current.eKey.wasPressedThisFrame)
         {
-            Debug.Log("E key pressed");
             if (heldObject == null)
                 TryPickup();
             else
@@ -25,7 +27,6 @@ public class PlayerInteraction : MonoBehaviour
 
     private void TryPickup()
     {
-        Debug.Log("Trying to pick up object");
         if (!Physics.Raycast(
                 playerCamera.transform.position,
                 playerCamera.transform.forward,
@@ -48,27 +49,30 @@ public class PlayerInteraction : MonoBehaviour
             rb.isKinematic = true;
         }
 
-        if(heldObject.GetComponent<Wepon>() != null)
-        {
-            Wepon weapon = heldObject.GetComponent<Wepon>();
-            weapon.SetEquipped(true);
-        }
-
         heldObject.transform.SetParent(hand);
         heldObject.transform.localPosition = Vector3.zero;
         heldObject.transform.localRotation = Quaternion.identity;
+
+        Gun gun = heldObject.GetComponent<Gun>();
+
+        if (gun != null && weponController != null)
+        {
+            weponController.SetCurrentGun(gun);
+        }
+
         Debug.Log("Picked up object: " + heldObject.name);
     }
 
     private void DropObject()
     {
-        Rigidbody rb = heldObject.GetComponent<Rigidbody>();
-        if(heldObject.GetComponent<Wepon>() != null)
+        Gun gun = heldObject.GetComponent<Gun>();
+
+        if (gun != null && weponController != null)
         {
-            Wepon weapon = heldObject.GetComponent<Wepon>();
-            weapon.SetEquipped(false);
+            weponController.SetCurrentGun(null);
         }
 
+        Rigidbody rb = heldObject.GetComponent<Rigidbody>();
 
         heldObject.transform.SetParent(null);
 
@@ -79,6 +83,7 @@ public class PlayerInteraction : MonoBehaviour
         }
 
         heldObject = null;
+
         Debug.Log("Dropped object");
     }
 }
