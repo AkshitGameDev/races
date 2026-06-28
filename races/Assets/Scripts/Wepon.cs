@@ -33,6 +33,7 @@ public class Wepon : MonoBehaviour
 
     private void Update()
     {
+
         if (currentGun == null)
         {
             Debug.Log("No current gun assigned");
@@ -47,6 +48,12 @@ public class Wepon : MonoBehaviour
 
         HandleReloadInput();
         HandleShootInput();
+        MoveGun();
+    }
+
+    private void MoveGun()
+    {
+        currentGun.transform.rotation = playerCamera.transform.rotation;
     }
 
     private void CreateBulletPool()

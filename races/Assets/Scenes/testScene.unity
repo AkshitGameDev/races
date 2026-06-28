@@ -931,7 +931,7 @@ MonoBehaviour:
   firePoint: {fileID: 518466536}
   bulletSpeed: 40
   fireRate: 0.1
-  spread: 0.06
+  spread: 0.04
   bulletsPerBurst: 3
   burstDelay: 0.06
   magazineSize: 30
