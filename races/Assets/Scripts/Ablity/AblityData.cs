@@ -26,12 +26,42 @@ abstract class AblityEffect
 [Serializable]
 class DamageEffect : AblityEffect
 {
-    public float damageAmount;
+    public int damageAmount;
 
     public override void Execute(GameObject caster, GameObject target)
     {
         target.GetComponent<Health>().ApplyDamage(damageAmount);
         // Implement damage logic here
         Debug.Log($"{caster.name} deals {damageAmount} damage to {target.name}");
+    }
+}
+
+[Serializable]
+class HealEffect : AblityEffect
+{
+    public int healAmount;
+
+    public override void Execute(GameObject caster, GameObject target)
+    {
+        target.GetComponent<Health>().Heal(healAmount);
+        // Implement healing logic here
+        Debug.Log($"{caster.name} heals {target.name} for {healAmount} health");
+    }
+}
+
+[Serializable]
+class KnockbackEffect : AblityEffect
+{
+    public float knockbackForce;
+
+    public override void Execute(GameObject caster, GameObject target)
+    {
+        Rigidbody targetRigidbody = target.GetComponent<Rigidbody>();
+        if (targetRigidbody != null)
+        {
+            Vector3 knockbackDirection = (target.transform.position - caster.transform.position).normalized;
+            targetRigidbody.AddForce(knockbackDirection * knockbackForce, ForceMode.Impulse);
+            Debug.Log($"{caster.name} knocks back {target.name} with force {knockbackForce}");
+        }
     }
 }
