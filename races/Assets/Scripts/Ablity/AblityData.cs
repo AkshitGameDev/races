@@ -1,10 +1,13 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "AblityData", menuName = "Scriptable Objects/AblityData")]
 public class AblityData : ScriptableObject
 {
     public string label;
-    [ScerializeReference] public List<AblityEffect> effect;
+    [SerializeReference]
+    public List<AblityEffect> effect;
 
     void OnEnable()
     {
@@ -18,39 +21,39 @@ public class AblityData : ScriptableObject
 }
 
 [Serializable]
-abstract class AblityEffect
+public abstract class AblityEffect
 {
     public abstract void Execute(GameObject caster, GameObject target);
 }
 
 [Serializable]
-class DamageEffect : AblityEffect
+public class DamageEffect : AblityEffect
 {
     public int damageAmount;
 
     public override void Execute(GameObject caster, GameObject target)
     {
-        target.GetComponent<Health>().ApplyDamage(damageAmount);
+        // target.GetComponent<Health>().ApplyDamage(damageAmount);
         // Implement damage logic here
         Debug.Log($"{caster.name} deals {damageAmount} damage to {target.name}");
     }
 }
 
 [Serializable]
-class HealEffect : AblityEffect
+public class HealEffect : AblityEffect
 {
     public int healAmount;
 
     public override void Execute(GameObject caster, GameObject target)
     {
-        target.GetComponent<Health>().Heal(healAmount);
+        // target.GetComponent<Health>().Heal(healAmount);
         // Implement healing logic here
         Debug.Log($"{caster.name} heals {target.name} for {healAmount} health");
     }
 }
 
 [Serializable]
-class KnockbackEffect : AblityEffect
+public class KnockbackEffect : AblityEffect
 {
     public float knockbackForce;
 
